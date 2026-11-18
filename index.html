@@ -105,10 +105,10 @@ const SPECIALS = {
   whirl: {name:'Wirbelwind',     cd:240, desc:'trifft alles ringsum',              up:'+Reichweite, schneller bereit'},
   volley:{name:'Pfeilhagel',     cd:300, desc:'Fächer aus 7 Pfeilen',              up:'+2 Pfeile, schneller bereit'},
   dash:  {name:'Sturmsprung',    cd:150, desc:'Sprint nach vorn, unverwundbar', up:'+Schaden, schneller bereit'},
-  heal:  {name:'Heilung',        cd:900, desc:'heilt dich und Maro',               up:'heilt mehr, schneller bereit'},
+  heal:  {name:'Heilung',        cd:900, desc:'heilt dich und Schiggy',               up:'heilt mehr, schneller bereit'},
   quake: {name:'Erdbeben',       cd:360, desc:'betäubt alle Gegner ringsum',       up:'+Reichweite, schneller bereit'},
   meteor:{name:'Feuerkranz',     cd:330, desc:'Feuerbälle in alle Richtungen',     up:'+3 Feuerbälle, schneller bereit'},
-  bubble:{name:'Schutzkuppel',   cd:720, desc:'du und Maro 3 s unverwundbar',      up:'hält länger, schneller bereit'},
+  bubble:{name:'Schutzkuppel',   cd:720, desc:'du und Schiggy 3 s unverwundbar',      up:'hält länger, schneller bereit'},
   chain: {name:'Kettenblitz',    cd:300, desc:'Blitz springt auf bis zu 4 Gegner', up:'+1 Ziel, schneller bereit'},
   starfall:{name:'Sternensturm', cd:600, desc:'Sterne treffen jeden Gegner, heilt', up:'+2 Sternenschaden, schneller bereit'},
 };
@@ -131,7 +131,7 @@ const HEROES = [
    unlock:{stat:'k_orc', n:10, text:'Besiege 10 Orks'}},
   {id:'selina', name:'Selina', title:'Klerikerin',      weapon:'staff',  special:'heal',   hp:5, speed:2.3, pc:'#fff2a0', wmod:{dmg:1, cd:18},
    look:{body:'robe',  c1:'#e8e4d8', c2:'#e8c547', head:'halo', hair:'#e8c547'},
-   unlock:{stat:'bites', n:30, text:'Maro beißt 30-mal zu'}},
+   unlock:{stat:'bites', n:30, text:'Schiggy beißt 30-mal zu'}},
   {id:'tarek',  name:'Tarek',  title:'Speerkämpfer',    weapon:'spear',  special:'dash',   hp:6, speed:2.4,
    look:{body:'tunic', c1:'#a0522d', c2:'#e8c547', head:'bandana', hc:'#e8c547', hair:'#3a2a1a', skin:'#c68b59'},
    unlock:{stat:'kills', n:50, text:'Besiege insgesamt 50 Gegner'}},
@@ -218,7 +218,7 @@ const ETYPES = {
 /*LEVELS*/
 const LEVELS = [
 { name:'Der Kellergang',
-  hint:'Besiege alle Gegner – dann öffnet sich der Ausgang. Maro beißt Gegner, die zu nahe kommen, und muss mit dir hinein!',
+  hint:'Besiege alle Gegner – dann öffnet sich der Ausgang. Schiggy beißt Gegner, die zu nahe kommen, und muss mit dir hinein!',
   pal:{f1:'#3b3946',f2:'#373541',w:'#4e4b5c',wt:'#6d6982',ws:'#262430'},
   map:[
   '##############################',
@@ -242,7 +242,7 @@ const LEVELS = [
   '#.........................E..#',
   '##############################']},
 { name:'Die Fledermaushöhle',
-  hint:'Fledermäuse sind flink. Mit Q zieht sich Maro in den Panzer zurück und ist unverwundbar.',
+  hint:'Fledermäuse sind flink. Mit Q zieht sich Schiggy in den Panzer zurück und ist unverwundbar.',
   pal:{f1:'#3d3329',f2:'#392f26',w:'#5a4634',wt:'#7a6048',ws:'#261d15'},
   map:[
   '##############################',
@@ -266,7 +266,7 @@ const LEVELS = [
   '#..........#..E.#..........l.#',
   '##############################']},
 { name:'Die Gruft der Skelette',
-  hint:'Skelette schießen Pfeile aus der Distanz. Nutze Deckung – und schütze Maro!',
+  hint:'Skelette schießen Pfeile aus der Distanz. Nutze Deckung – und schütze Schiggy!',
   pal:{f1:'#2f3a44',f2:'#2c3640',w:'#45525f',wt:'#62717f',ws:'#1b2229'},
   map:[
   '##############################',
@@ -362,7 +362,7 @@ const LEVELS = [
   '#...........#.....#.......E..#',
   '##############################']},
 { name:'Die Geisterbibliothek',
-  hint:'Geister schweben einfach durch Wände. Halte sie von Maro fern!',
+  hint:'Geister schweben einfach durch Wände. Halte sie von Schiggy fern!',
   pal:{f1:'#3a3030',f2:'#362c2c',w:'#5a3b2a',wt:'#7a5236',ws:'#24170f'},
   map:[
   '##############################',
@@ -480,8 +480,8 @@ const UPGRADES = [
   {key:'dmg',     icon:'sword',  name:'Stärke',       max:5, base:10, desc:()=>'+1 Schaden bei jedem Angriff'},
   {key:'speed',   icon:'boot',   name:'Flinkheit',    max:4, base:6,  desc:()=>'Schneller laufen und angreifen'},
   {key:'special', icon:'star',   name:()=>SPECIALS[HEROES[heroIdx].special].name, max:4, base:10, desc:()=>SPECIALS[HEROES[heroIdx].special].up},
-  {key:'turtle',  icon:'shell',  name:'Maros Panzer', max:5, base:6,  desc:()=>'+1 maximales Leben für Maro'},
-  {key:'bite',    icon:'bite',   name:'Maros Biss',   max:4, base:8,  desc:()=>run.up.bite >= 1 ? '+1 Biss-Schaden, schneller (ab Stufe 2 betäubt)' : '+1 Biss-Schaden, Maro beißt schneller'},
+  {key:'turtle',  icon:'shell',  name:'Schiggys Panzer', max:5, base:6,  desc:()=>'+1 maximales Leben für Schiggy'},
+  {key:'bite',    icon:'bite',   name:'Schiggys Biss',   max:4, base:8,  desc:()=>run.up.bite >= 1 ? '+1 Biss-Schaden, schneller (ab Stufe 2 betäubt)' : '+1 Biss-Schaden, Schiggy beißt schneller'},
 ];
 const upName = u => typeof u.name === 'function' ? u.name() : u.name;
 const upCost = u => Math.round(u.base * (1 + 0.75*run.up[u.key]));
@@ -725,8 +725,8 @@ function hurtTurtle(dmg, sx, sy){
   t.hp -= dmg; t.inv = 70; t.kx += Math.cos(a)*4; t.ky += Math.sin(a)*4;
   shake = 6; SFX.turtle(); burst(t.x, t.y, '#8fc75a', 10, 3, 25);
   floatText(t.x, t.y-18, '-'+dmg, '#9cff6a');
-  if(t.hp <= 1 && t.hp > 0) showMsg('Maro ist schwer verletzt! Drück Q, damit Maro sich im Panzer versteckt.', 200);
-  if(t.hp <= 0){ t.hp = 0; die('Maro wurde besiegt!'); }
+  if(t.hp <= 1 && t.hp > 0) showMsg('Schiggy ist schwer verletzt! Drück Q, damit Schiggy sich im Panzer versteckt.', 200);
+  if(t.hp <= 0){ t.hp = 0; die('Schiggy wurde besiegt!'); }
   return true;
 }
 function die(reason){ deadReason = reason; state = 'dead'; stateTimer = 0; stats.retries++; }
@@ -865,7 +865,7 @@ function updateTurtle(){
       const s = steer(t, player, fieldP), sp = d > 6*T ? 1.9 : 1.6;
       move(t, s.x*sp, s.y*sp); t.face = Math.atan2(s.y, s.x); t.anim += 0.18; t.moving = true;
     }
-    // Maro beißt Gegner, die zu nahe kommen
+    // Schiggy beißt Gegner, die zu nahe kommen
     if(t.biteCd > 0) t.biteCd--;
     if(t.bite > 0){ t.bite--; t.face = t.biteFace; }
     if(t.biteCd <= 0){
@@ -1082,7 +1082,7 @@ function checkExit(){
     state = 'levelwin'; stateTimer = 0; SFX.win();
     trackMax('level', levelIdx+1); trackMax('lvl_' + HEROES[heroIdx].id, levelIdx+1); burst(exitPos.x, exitPos.y, '#7fffd4', 40, 5, 50);
   } else if(!msg){
-    showMsg(turtle.shell ? 'Maro steckt im Panzer! Drück Q, damit Maro dir folgt.' : 'Warte auf Maro! Ohne die Schildkröte geht es nicht weiter.', 90);
+    showMsg(turtle.shell ? 'Schiggy steckt im Panzer! Drück Q, damit Schiggy dir folgt.' : 'Warte auf Schiggy! Ohne die Schildkröte geht es nicht weiter.', 90);
   }
 }
 
@@ -1650,7 +1650,7 @@ function drawHUD(){
   g.fillStyle = ready >= 1 ? (P.blocking ? '#fff08a' : '#7fd4ff') : '#4a6a8a'; g.fillRect(sx+1, 26, 78*ready, 5);
   // Turtle
   const mx = Math.max(420, sx + 100);
-  g.fillStyle = '#c9f5a8'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillText('Maro', mx, 22);
+  g.fillStyle = '#c9f5a8'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillText('Schiggy', mx, 22);
   const ts = turtle.maxhp > 6 ? 15 : 20, tz = turtle.maxhp > 6 ? 14 : 17;
   for(let i=0;i<turtle.maxhp;i++) drawHeart(g, mx + 58 + i*ts, 22 - tz/2, tz, i < turtle.hp ? '#6cd04a' : '#2c3a2c', '#000');
   g.font = '12px "Trebuchet MS", sans-serif'; g.fillStyle = turtle.shell ? '#9cff6a' : '#8a9a80';
@@ -1786,7 +1786,7 @@ function drawTitle(){
   text('Pfeiltasten wählen  ·  Enter oder Doppelklick starten', W/2, 578, 15, '#fff', 'center', 'normal');
   const ctrl = [
     ['WASD / Pfeile', 'bewegen'], ['Leertaste / J', 'angreifen'], ['E / Shift / K', 'Spezialfähigkeit'],
-    ['Q', 'Maro: folgen ↔ Panzer'], ['P / Esc', 'Pause'], ['M', 'Ton an/aus'],
+    ['Q', 'Schiggy: folgen ↔ Panzer'], ['P / Esc', 'Pause'], ['M', 'Ton an/aus'],
   ];
   ctrl.forEach((c,i) => { const x = 140 + (i%3)*270, y = 604 + Math.floor(i/3)*22;
     text(c[0], x, y, 13, '#c9f5a8', 'right'); text(c[1], x+10, y, 13, '#b9aee0', 'left', 'normal'); });
@@ -1865,7 +1865,7 @@ function drawScene(){
   } else if(state === 'levelwin'){
     ctx.fillStyle = `rgba(0,20,15,${Math.min(.5, stateTimer/80)})`; ctx.fillRect(0,HUD,W,H-HUD);
     text('Level geschafft!', W/2, H/2, 46, '#7fffd4');
-    text(`${HEROES[heroIdx].name} und Maro schlüpfen durch das Portal…`, W/2, H/2+40, 18, '#e8e0ff', 'center', 'normal');
+    text(`${HEROES[heroIdx].name} und Schiggy schlüpfen durch das Portal…`, W/2, H/2+40, 18, '#e8e0ff', 'center', 'normal');
   }
   if(msg && state === 'play'){
     const a = Math.min(1, msg.life/20);
@@ -1896,7 +1896,7 @@ function drawShop(){
   g.fillStyle = 'rgba(0,0,0,.65)'; g.fillRect(0, HUD, W, H-HUD);
   panel(x0, y0, SHOP.w, 92 + (n+1)*SHOP.rowH + 34, .95);
   text('Schatzkammer', W/2, y0 + 42, 32, '#ffd34d');
-  text(`Level ${levelIdx+1} geschafft! Verbessere ${HEROES[heroIdx].name} und Maro für das nächste Gewölbe.`, W/2, y0 + 68, 14, '#cfc4f0', 'center', 'normal');
+  text(`Level ${levelIdx+1} geschafft! Verbessere ${HEROES[heroIdx].name} und Schiggy für das nächste Gewölbe.`, W/2, y0 + 68, 14, '#cfc4f0', 'center', 'normal');
   // Goldanzeige
   const gc = shopFlash < 0 ? '#ff6b6b' : '#ffd34d';
   drawCoin(g, x0 + SHOP.w - 92, y0 + 34, 10, globalTime*0.05);
@@ -1924,7 +1924,7 @@ function drawVictory(){
   for(let i=0;i<40;i++){ const x = (i*97 + globalTime*(1+i%3)) % W, y = (i*53 + globalTime*0.7*(1+i%2)) % H;
     g.fillStyle = `hsl(${(i*40+globalTime)%360},80%,65%)`; g.fillRect(x, y, 4, 4); }
   text('Sieg!', W/2, 150, 72, '#7fffd4');
-  text(`${HEROES[heroIdx].name} hat Maro sicher durch alle Gewölbe gebracht.`, W/2, 205, 20, '#e8e0ff', 'center', 'normal');
+  text(`${HEROES[heroIdx].name} hat Schiggy sicher durch alle Gewölbe gebracht.`, W/2, 205, 20, '#e8e0ff', 'center', 'normal');
   g.save(); g.translate(W/2-50, 330); g.scale(3,3); drawHero(g, HEROES[heroIdx], 0, 0, Math.PI/2, {moving:true, anim:globalTime*0.2, swing:0, swingMax:1, spin:0}); g.restore();
   drawTurtle(g, {x:W/2+60, y:340, face:Math.PI, anim:globalTime*0.2, moving:true, shell:false, inv:0}, 3);
   const secs = Math.floor(stats.time/60);
