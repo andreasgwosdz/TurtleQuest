@@ -562,9 +562,10 @@ function steer(e, tgt, field){
 }
 
 // ---------------------------------------------------------------- Level laden
+const ENEMY_HP_MULT = 4; // Lebenspunkte aller Gegner (inkl. Bosse und Beschwörungen)
 function makeEnemy(c,x,y){
-  const d = ETYPES[c];
-  return {...d, maxhp:d.hp, x, y, kx:0, ky:0, hitCd:0, atkCd:60+Math.random()*90, aggroed:false,
+  const d = ETYPES[c], hp = d.hp * ENEMY_HP_MULT;
+  return {...d, hp, maxhp:hp, x, y, kx:0, ky:0, hitCd:0, atkCd:60+Math.random()*90, aggroed:false,
           fly: d.kind === 'bat', leap:0, wind:0, lx:0, ly:0,
           frozen:0, stun:0, flash:0, anim:Math.random()*100, face:Math.PI/2, wa:Math.random()*6.28, wt:0, summon:300};
 }
