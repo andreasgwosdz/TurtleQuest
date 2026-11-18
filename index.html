@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MaroQuest</title>
+<title>TurtleQuest</title>
 <style>
   html,body{margin:0;height:100%;background:#0d0b14;}
   body{display:flex;align-items:center;justify-content:center;overflow:hidden;}
@@ -15,7 +15,7 @@
 <script>
 'use strict';
 // ====================================================================
-//  MaroQuest – Bring Maro, die Schildkröte, sicher zum Ausgang!
+//  TurtleQuest – Bring the turtle, safe to the exit!
 // ====================================================================
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const T = 32, COLS = 30, ROWS = 20, HUD = 44;
@@ -1646,7 +1646,7 @@ function drawHUD(){
   g.fillStyle = '#000'; g.fillRect(sx, 25, 80, 7);
   const scd = specialCd(), ready = scd === 0 ? 1 : 1 - P.scd/scd;
   g.fillStyle = ready >= 1 ? (P.blocking ? '#fff08a' : '#7fd4ff') : '#4a6a8a'; g.fillRect(sx+1, 26, 78*ready, 5);
-  // Maro
+  // Turtle
   const mx = Math.max(420, sx + 100);
   g.fillStyle = '#c9f5a8'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillText('Maro', mx, 22);
   const ts = turtle.maxhp > 6 ? 15 : 20, tz = turtle.maxhp > 6 ? 14 : 17;
@@ -1699,8 +1699,8 @@ function drawTitle(){
   const gr = g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1d1530'); gr.addColorStop(1,'#0b0812');
   g.fillStyle = gr; g.fillRect(0,0,W,H);
   for(let i=0;i<60;i++){ const x = (i*137.5 + globalTime*0.1*(i%3+1)) % W, y = (i*71.3) % H; g.fillStyle = `rgba(200,180,255,${0.15+0.15*Math.sin(globalTime*0.03+i)})`; g.fillRect(x, y, 2, 2); }
-  text('MaroQuest', W/2, 62, 52, '#c9f5a8');
-  text('Bring Maro, die Schildkröte, sicher durch zehn finstere Gewölbe!', W/2, 94, 16, '#cfc4f0', 'center', 'normal');
+  text('TurtleQuest', W/2, 62, 52, '#c9f5a8');
+  text('Bring die Schildkröte sicher durch zehn finstere Gewölbe!', W/2, 94, 16, '#cfc4f0', 'center', 'normal');
   // Raster
   // Ulti-Feld
   {
