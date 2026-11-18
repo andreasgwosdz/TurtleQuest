@@ -114,7 +114,7 @@ const SPECIALS = {
 };
 // look: body = robe|armor|fur|tunic|cloak · head = wizard|witch|helmet|kabuto|horned|hair|hood|bandana|halo|cap|mohawk
 const HEROES = [
-  {id:'lyria',   name:'Lyria',   title:'Magierin',        weapon:'staff',  special:'nova',   hp:4, speed:2.5, pc:'#bfefff',
+  {id:'lyria',   name:'Lyria',   title:'Magierin',        weapon:'staff',  special:'nova',   hp:4, speed:2.5, pc:'#bfefff', wmod:{chill:true},
    look:{body:'robe',  c1:'#6a3fc4', c2:'#e8c547', head:'wizard', hc:'#5a33a8'}},
   {id:'aldo',   name:'Aldo',   title:'Ritter',          weapon:'sword',  special:'block',  hp:6, speed:2.3,
    look:{body:'armor', c1:'#8f9bab', c2:'#2f5fb3', head:'helmet', hc:'#d64545'}},
@@ -562,12 +562,13 @@ function steer(e, tgt, field){
 }
 
 // ---------------------------------------------------------------- Level laden
+const CHILL_SPEED = 0.7, CHILL_TIME = 120; // Frostbolt: 30 % langsamer für 2 s
 const ENEMY_HP_MULT = 4; // Lebenspunkte aller Gegner (inkl. Bosse und Beschwörungen)
 function makeEnemy(c,x,y){
   const d = ETYPES[c], hp = d.hp * ENEMY_HP_MULT;
   return {...d, hp, maxhp:hp, x, y, kx:0, ky:0, hitCd:0, atkCd:60+Math.random()*90, aggroed:false,
           fly: d.kind === 'bat', leap:0, wind:0, lx:0, ly:0,
-          frozen:0, stun:0, flash:0, anim:Math.random()*100, face:Math.PI/2, wa:Math.random()*6.28, wt:0, summon:300};
+          frozen:0, slow:0, stun:0, flash:0, anim:Math.random()*100, face:Math.PI/2, wa:Math.random()*6.28, wt:0, summon:300};
 }
 function loadLevel(i){
   const L = LEVELS[i];
@@ -766,7 +767,7 @@ function doAttack(P, Hh, Wp){
   const fx = Math.cos(P.face), fy = Math.sin(P.face), dmg = Wp.dmg + run.up.dmg;
   if(Wp.type === 'proj'){
     projs.push({x:P.x+fx*12, y:P.y+fy*12, vx:fx*Wp.speed, vy:fy*Wp.speed, r:Wp.r, dmg, owner:'p', kind:Wp.pkind || 'fire',
-                color:Hh.pc || '#ff9a3c', life:Wp.life, pierce:Wp.pierce || 0, ice:!!Wp.ice, hits:new Set()});
+                color:Hh.pc || '#ff9a3c', life:Wp.life, pierce:Wp.pierce || 0, ice:!!Wp.ice, chill:!!Wp.chill, hits:new Set()});
     P.cd = atkCd(Wp.cd); P.swing = P.swingMax = 10; SFX[Wp.sfx]();
   } else if(Wp.type === 'melee'){
     meleeHit(Wp.range, Wp.arc, dmg, Wp.kb, Wp.stun || 0);
@@ -895,7 +896,7 @@ function updateEnemies(){
   for(const e of enemies){
     e.anim++; if(e.flash > 0) e.flash--; if(e.hitCd > 0) e.hitCd--;
     if(e.frozen > 0 || e.stun > 0){
-      if(e.frozen > 0) e.frozen--; if(e.stun > 0) e.stun--;
+      if(e.frozen > 0) e.frozen--; if(e.stun > 0) e.stun--; if(e.slow > 0) e.slow--;
       if(e.kind === 'ghost'){ e.x += e.kx; e.y += e.ky; } else move(e, e.kx, e.ky);
       e.kx *= 0.82; e.ky *= 0.82; continue;
     }
@@ -960,6 +961,7 @@ function updateEnemies(){
         }
       }
     }
+    if(e.slow > 0){ e.slow--; vx *= CHILL_SPEED; vy *= CHILL_SPEED; }
     if(e.kind === 'ghost'){ // schwebt durch Wände
       e.x = Math.max(T, Math.min(COLS*T-T, e.x + vx + e.kx)); e.y = Math.max(T, Math.min(ROWS*T-T, e.y + vy + e.ky));
     } else if(move(e, vx + e.kx, vy + e.ky)){ if(!e.aggroed) e.wt = 0; if(e.leap > 0) e.leap = 0; }
@@ -1027,6 +1029,7 @@ function updateProjs(){
         if(e.hp > 0 && !(p.hits && p.hits.has(e)) && Math.hypot(p.x-e.x, p.y-e.y) < e.r + p.r){
           const a = Math.atan2(p.vy, p.vx); damageEnemy(e, p.dmg, Math.cos(a)*4, Math.sin(a)*4);
           if(p.ice && e.hp > 0) e.frozen = Math.max(e.frozen, e.kind === 'boss' ? 10 : 35);
+          if(p.chill && e.hp > 0) e.slow = CHILL_TIME; // Frostbolt: verlangsamt um 30 %
           burst(p.x, p.y, p.kind==='fire' ? (p.color || '#ffb347') : p.kind==='wave' ? '#ffe680' : '#fff6a0', 10, 3, 20);
           if(p.pierce > 0){ p.pierce--; if(p.hits) p.hits.add(e); else p.hits = new Set([e]); continue; }
           p.dead = true; break;
@@ -1525,6 +1528,7 @@ function drawEnemy(e){
   }
   if(e.flash > 0){ g.globalCompositeOperation = 'lighter'; circle(g, 0, 0, e.r+2, 'rgba(255,255,255,.55)'); g.globalCompositeOperation = 'source-over'; }
   if(e.frozen > 0){ circle(g, 0, 0, e.r+4, 'rgba(150,220,255,.4)', 'rgba(220,250,255,.8)', 1.5); }
+  else if(e.slow > 0){ circle(g, 0, 0, e.r+3, 'rgba(190,239,255,.15)', 'rgba(190,239,255,.7)', 1.5); }
   if(e.stun > 0){ for(let i=0;i<3;i++){ const a = globalTime*0.15 + i*2.09; circle(g, Math.cos(a)*9, -e.r-8+Math.sin(a)*3, 1.8, '#ffe066'); } }
   if(e.hp < e.maxhp && e.kind !== 'boss'){
     const w = e.r*2; g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(-w/2-1, -e.r-12, w+2, 5);
