@@ -1651,10 +1651,11 @@ function drawHUD(){
   // Turtle
   const mx = Math.max(420, sx + 100);
   g.fillStyle = '#c9f5a8'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillText('Schiggy', mx, 22);
+  const tx = mx + Math.ceil(g.measureText('Schiggy').width) + 10; // Herzen beginnen hinter dem Namen
   const ts = turtle.maxhp > 6 ? 15 : 20, tz = turtle.maxhp > 6 ? 14 : 17;
-  for(let i=0;i<turtle.maxhp;i++) drawHeart(g, mx + 58 + i*ts, 22 - tz/2, tz, i < turtle.hp ? '#6cd04a' : '#2c3a2c', '#000');
+  for(let i=0;i<turtle.maxhp;i++) drawHeart(g, tx + i*ts, 22 - tz/2, tz, i < turtle.hp ? '#6cd04a' : '#2c3a2c', '#000');
   g.font = '12px "Trebuchet MS", sans-serif'; g.fillStyle = turtle.shell ? '#9cff6a' : '#8a9a80';
-  g.fillText(turtle.shell ? '[Q] im Panzer' : '[Q] folgt dir', mx + 58 + turtle.maxhp*ts + 4, 22);
+  g.fillText(turtle.shell ? '[Q] im Panzer' : '[Q] folgt dir', tx + turtle.maxhp*ts + 4, 22);
   // Level
   g.textAlign = 'right'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillStyle = '#e8e0ff';
   g.fillText(`Level ${levelIdx+1}/${LEVELS.length}`, W-12, 14);
