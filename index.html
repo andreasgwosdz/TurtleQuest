@@ -16,9 +16,17 @@
   html,body{margin:0;height:100%;background:#0d0b14;}
   body{display:flex;align-items:center;justify-content:center;overflow:hidden;}
   canvas{display:block;box-shadow:0 0 60px #000;border-radius:6px;}
+  /* Touch-Steuerung: nur auf Geräten mit grobem Zeiger (Handy/Tablet) sichtbar */
+  #joyPad{display:none;align-items:center;justify-content:center;padding:0 16px;}
+  #joy{position:relative;width:140px;height:140px;border-radius:50%;border:3px solid rgba(232,224,255,.35);
+       background:rgba(232,224,255,.06);touch-action:none;user-select:none;-webkit-user-select:none;}
+  #knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
+        background:rgba(232,224,255,.55);box-shadow:0 0 12px rgba(0,0,0,.5);pointer-events:none;}
+  @media (pointer: coarse){ #joyPad{display:flex;} }
 </style>
 </head>
 <body>
+<div id="joyPad"><div id="joy"><div id="knob"></div></div></div>
 <canvas id="c"></canvas>
 <script>
 'use strict';
@@ -29,7 +37,7 @@ const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const T = 32, COLS = 30, ROWS = 20, HUD = 44;
 const W = COLS * T, H = ROWS * T + HUD;
 cv.width = W; cv.height = H;
-function fit(){ const s = Math.min(innerWidth / W, innerHeight / H) * 0.98; cv.style.width = W*s + 'px'; cv.style.height = H*s + 'px'; }
+function fit(){ const padW = document.getElementById('joyPad').offsetWidth; const s = Math.min((innerWidth - padW) / W, innerHeight / H) * 0.98; cv.style.width = W*s + 'px'; cv.style.height = H*s + 'px'; }
 addEventListener('resize', fit); fit();
 
 // ---------------------------------------------------------------- Audio
@@ -90,6 +98,23 @@ addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { for(const k in keys) keys[k] = false; });
 const down = (...ks) => ks.some(k => keys[k]);
 const hit  = (...ks) => ks.some(k => pressed[k]);
+// Virtueller Joystick (nur Handy): liefert eine analoge Richtung in stick.x/stick.y (-1..1)
+const stick = {x:0, y:0, id:null};
+(() => {
+  const joy = document.getElementById('joy'), knob = document.getElementById('knob');
+  const set = (x, y) => { stick.x = x; stick.y = y; knob.style.transform = `translate(${x*42}px, ${y*42}px)`; };
+  const track = e => {
+    const r = joy.getBoundingClientRect(), R = r.width/2;
+    let x = (e.clientX - r.left - R) / R, y = (e.clientY - r.top - R) / R;
+    const l = Math.hypot(x, y); if(l > 1){ x /= l; y /= l; }
+    set(x, y);
+  };
+  const end = e => { if(e.pointerId !== stick.id) return; stick.id = null; set(0, 0); };
+  joy.addEventListener('pointerdown', e => { initAudio(); e.preventDefault(); stick.id = e.pointerId; joy.setPointerCapture(e.pointerId); track(e); });
+  joy.addEventListener('pointermove', e => { if(e.pointerId === stick.id) track(e); });
+  joy.addEventListener('pointerup', end); joy.addEventListener('pointercancel', end);
+  addEventListener('blur', () => { stick.id = null; set(0, 0); });
+})();
 const mouse = {x:0, y:0, click:false};
 function mpos(e){ const r = cv.getBoundingClientRect(); mouse.x = (e.clientX-r.left)*W/r.width; mouse.y = (e.clientY-r.top)*H/r.height; }
 cv.addEventListener('mousemove', mpos);
@@ -747,6 +772,9 @@ function updatePlayer(){
   const P = player, Hh = HEROES[heroIdx], Wp = heroWeapon();
   let mx = (down('d','arrowright')?1:0) - (down('a','arrowleft')?1:0);
   let my = (down('s','arrowdown')?1:0) - (down('w','arrowup')?1:0);
+  let mag = 1;
+  const sm = Math.hypot(stick.x, stick.y);
+  if(!mx && !my && sm > 0.2){ mx = stick.x; my = stick.y; mag = Math.min(1, (sm - 0.2) / 0.6); }
   P.blocking = Hh.special === 'block' && down('e','k','shift');
   let sp = heroSpeed() * (P.blocking ? 0.5 : 1);
   if(Wp.slow && P.swing > 0) sp *= 0.5;
@@ -764,7 +792,7 @@ function updatePlayer(){
       if(!P.blocking) P.face = Math.atan2(my,mx);
       P.anim += 0.25;
     }
-    move(P, mx*sp + P.kx, my*sp + P.ky);
+    move(P, mx*sp*mag + P.kx, my*sp*mag + P.ky);
   }
   P.kx *= 0.8; P.ky *= 0.8;
   if(P.cd > 0) P.cd--; if(P.scd > 0) P.scd--; if(P.inv > 0) P.inv--; if(P.swing > 0) P.swing--; if(P.spin > 0) P.spin--; if(P.bubble > 0) P.bubble--;
