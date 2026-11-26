@@ -35,6 +35,8 @@
         background:radial-gradient(circle at 35% 35%, #fff, rgba(232,224,255,.85) 45%, rgba(185,174,224,.85));
         box-shadow:0 3px 10px rgba(0,0,0,.6);pointer-events:none;}
   @media (pointer: coarse){ #joyPad{display:block;} }
+  /* Querformat auf dem Handy: Canvas füllt den ganzen Bildschirm, die Kamera folgt der Figur */
+  body.zoomable canvas{border-radius:0;box-shadow:none;}
 </style>
 </head>
 <body>
@@ -45,23 +47,67 @@
 // ====================================================================
 //  TurtleQuest – Bring the turtle, safe to the exit!
 // ====================================================================
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+// Das Spiel zeichnet in ein internes Bild (buf, logisch W×H). Ein Compositor bringt es danach
+// auf das sichtbare Canvas – normal komplett eingepasst, im Handy-Querformat herangezoomt mit Kamera.
+const cv = document.getElementById('c'), dctx = cv.getContext('2d');
+const buf = document.createElement('canvas'), gctx = buf.getContext('2d');
+let ctx = gctx;
 const T = 32, COLS = 30, ROWS = 20, HUD = 44;
 const W = COLS * T, H = ROWS * T + HUD;
-cv.width = W; cv.height = H;
+let RS = 1;   // Auflösungsfaktor des internen Bilds
+const zoomMQ = matchMedia('(pointer: coarse) and (orientation: landscape)');
+const view = {w:W, h:H, dpr:1, s:0, tx:0, ty:0, cx:W/2, cy:H/2};
 // Canvas an den verfügbaren Platz anpassen (Desktop, Tablet, Handy – Hoch- und Querformat)
 function fit(){
+  const full = zoomMQ.matches;
+  document.body.classList.toggle('zoomable', full);
   const cs = getComputedStyle(document.body);
   const vw = window.visualViewport ? visualViewport.width : innerWidth;
   const vh = window.visualViewport ? visualViewport.height : innerHeight;
-  let aw = vw - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  let ah = vh - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  const s = Math.max(0.1, Math.min(aw / W, ah / H) * 0.98);
-  cv.style.width = Math.floor(W*s) + 'px'; cv.style.height = Math.floor(H*s) + 'px';
+  const aw = vw - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ah = vh - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const sf = Math.max(0.1, Math.min(aw / W, ah / H) * (full ? 1 : 0.98));
+  view.w = Math.floor(full ? aw : W*sf); view.h = Math.floor(full ? ah : H*sf);
+  view.dpr = window.devicePixelRatio || 1;
+  cv.style.width = view.w + 'px'; cv.style.height = view.h + 'px';
+  cv.width = Math.round(view.w * view.dpr); cv.height = Math.round(view.h * view.dpr);
+  const sFit = Math.min(view.w / W, view.h / H), sFill = Math.max(view.w / W, view.h / H);
+  view.s = Math.min(sFill, Math.max(sFit, view.s));
+  RS = Math.min(2.5, Math.max(1, sFill * view.dpr));
+  buf.width = Math.round(W * RS); buf.height = Math.round(H * RS);
+}
+// Bringt das interne Bild auf den Bildschirm; zoomt sanft und lässt die Kamera der Figur folgen
+function composite(){
+  const zoomed = zoomMQ.matches && state === 'play';
+  const sFit = Math.min(view.w / W, view.h / H), sFill = Math.max(view.w / W, view.h / H);
+  const target = zoomed ? sFill : sFit;
+  view.s += (target - view.s) * 0.08; if(Math.abs(target - view.s) < 0.002) view.s = target;
+  view.cx += ((zoomed ? player.x : W/2) - view.cx) * 0.15;
+  view.cy += ((zoomed ? HUD + player.y : H/2) - view.cy) * 0.15;
+  const s = view.s, d = view.dpr;
+  const place = (c, frame, screen) => frame*s <= screen ? (screen - frame*s) / 2 : Math.min(0, Math.max(screen - frame*s, screen/2 - c*s));
+  view.tx = place(view.cx, W, view.w); view.ty = place(view.cy, H, view.h);
+  dctx.setTransform(1,0,0,1,0,0);
+  dctx.fillStyle = '#0d0b14'; dctx.fillRect(0, 0, cv.width, cv.height);
+  dctx.imageSmoothingQuality = 'high';
+  dctx.drawImage(buf, 0, 0, buf.width, buf.height, view.tx*d, view.ty*d, W*s*d, H*s*d);
+  // HUD bleibt beim Zoomen oben fest stehen
+  if(view.ty < 0) dctx.drawImage(buf, 0, 0, buf.width, HUD*RS, view.tx*d, 0, W*s*d, HUD*s*d);
+}
+// UI-Elemente (Hinweise, Toasts) direkt auf den Bildschirm zeichnen, oben bzw. unten verankert
+function drawOverlayUI(){
+  const s = view.s, d = view.dpr;
+  ctx = dctx;
+  dctx.setTransform(s*d, 0, 0, s*d, view.tx*d, (Math.min(view.h, view.ty + H*s) - H*s) * d);
+  drawMsg();
+  dctx.setTransform(s*d, 0, 0, s*d, view.tx*d, Math.max(0, view.ty) * d);
+  drawToast();
+  ctx = gctx;
 }
 addEventListener('resize', fit);
 addEventListener('orientationchange', () => setTimeout(fit, 100));
 if(window.visualViewport) visualViewport.addEventListener('resize', fit);
+zoomMQ.addEventListener('change', fit);
 fit();
 // Kein Scrollen/Zoomen per Geste auf dem Handy
 document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
@@ -144,7 +190,7 @@ const stick = {x:0, y:0, id:null};
   addEventListener('blur', () => { stick.id = null; set(0, 0); });
 })();
 const mouse = {x:0, y:0, click:false};
-function mpos(e){ const r = cv.getBoundingClientRect(); mouse.x = (e.clientX-r.left)*W/r.width; mouse.y = (e.clientY-r.top)*H/r.height; }
+function mpos(e){ const r = cv.getBoundingClientRect(); mouse.x = (e.clientX-r.left-view.tx)/view.s; mouse.y = (e.clientY-r.top-view.ty)/view.s; }
 cv.addEventListener('mousemove', mpos);
 cv.addEventListener('mousedown', e => { initAudio(); mpos(e); mouse.click = true; });
 
@@ -666,8 +712,9 @@ function loadLevel(i){
 }
 
 function renderBg(){
-  bg = document.createElement('canvas'); bg.width = COLS*T; bg.height = ROWS*T;
+  bg = document.createElement('canvas'); bg.width = Math.round(COLS*T*RS); bg.height = Math.round(ROWS*T*RS);
   const g = bg.getContext('2d'), pal = LEVELS[levelIdx].pal;
+  g.scale(RS, RS);
   let seed = levelIdx*9973 + 17;
   const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
@@ -715,9 +762,9 @@ function renderBg(){
     if(!wall(x,y-1)) g.fillRect(px,py,T,2);
   }
   // Vignette
-  const vg = g.createRadialGradient(bg.width/2, bg.height/2, 200, bg.width/2, bg.height/2, 620);
+  const vg = g.createRadialGradient(COLS*T/2, ROWS*T/2, 200, COLS*T/2, ROWS*T/2, 620);
   vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.45)');
-  g.fillStyle = vg; g.fillRect(0,0,bg.width,bg.height);
+  g.fillStyle = vg; g.fillRect(0,0,COLS*T,ROWS*T);
 }
 
 // ---------------------------------------------------------------- Effekte
@@ -1914,7 +1961,8 @@ function drawWorld(){
   g.save();
   const s = shake > 0.5 ? shake : 0;
   g.translate((Math.random()-.5)*s, HUD + (Math.random()-.5)*s);
-  g.drawImage(bg, 0, 0);
+  if(bg.width !== Math.round(COLS*T*RS)) renderBg();   // Auflösung hat sich geändert
+  g.drawImage(bg, 0, 0, COLS*T, ROWS*T);
   if(liquid.length){
     const pal = LEVELS[levelIdx].pal;
     for(const [x,y] of liquid){ const a = 0.1 + 0.1*Math.sin(globalTime*0.05 + x*0.9 + y*1.3);
@@ -1933,7 +1981,10 @@ function drawWorld(){
 }
 
 function draw(){
-  drawScene(); drawToast();
+  ctx = gctx; gctx.setTransform(RS, 0, 0, RS, 0, 0);
+  drawScene();
+  composite();
+  drawOverlayUI();
 }
 function drawScene(){
   ctx.fillStyle = '#0d0b14'; ctx.fillRect(0,0,W,H);
@@ -1969,6 +2020,8 @@ function drawScene(){
     text('Level geschafft!', W/2, H/2, 46, '#7fffd4');
     text(`${HEROES[heroIdx].name} und Schiggy schlüpfen durch das Portal…`, W/2, H/2+40, 18, '#e8e0ff', 'center', 'normal');
   }
+}
+function drawMsg(){
   if(msg && state === 'play'){
     const a = Math.min(1, msg.life/20);
     ctx.globalAlpha = a;
