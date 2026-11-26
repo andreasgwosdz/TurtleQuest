@@ -21,7 +21,7 @@
   body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;
        padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
        -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-text-size-adjust:100%;}
-  canvas{display:block;box-shadow:0 0 60px #000;border-radius:6px;}
+  canvas{display:block;}
   /* Touch-Steuerung: nur auf Geräten mit grobem Zeiger (Handy/Tablet) sichtbar */
   /* Schwebt immer unten links über dem Spielfeld */
   #joyPad{display:none;position:fixed;z-index:10;
@@ -35,8 +35,6 @@
         background:radial-gradient(circle at 35% 35%, #fff, rgba(232,224,255,.85) 45%, rgba(185,174,224,.85));
         box-shadow:0 3px 10px rgba(0,0,0,.6);pointer-events:none;}
   @media (pointer: coarse){ #joyPad{display:block;} }
-  /* Querformat auf dem Handy: Canvas füllt den ganzen Bildschirm, die Kamera folgt der Figur */
-  body.zoomable canvas{border-radius:0;box-shadow:none;}
 </style>
 </head>
 <body>
@@ -48,26 +46,24 @@
 //  TurtleQuest – Bring the turtle, safe to the exit!
 // ====================================================================
 // Das Spiel zeichnet in ein internes Bild (buf, logisch W×H). Ein Compositor bringt es danach
-// auf das sichtbare Canvas – normal komplett eingepasst, im Handy-Querformat herangezoomt mit Kamera.
+// auf das sichtbare Canvas: Das Canvas füllt immer den ganzen Bildschirm; im Spiel wird herangezoomt
+// und die Kamera folgt der Figur, in Menüs/Overlays ist das ganze Bild eingepasst.
 const cv = document.getElementById('c'), dctx = cv.getContext('2d');
 const buf = document.createElement('canvas'), gctx = buf.getContext('2d');
 let ctx = gctx;
 const T = 32, COLS = 30, ROWS = 20, HUD = 44;
 const W = COLS * T, H = ROWS * T + HUD;
 let RS = 1;   // Auflösungsfaktor des internen Bilds
-const zoomMQ = matchMedia('(pointer: coarse) and (orientation: landscape)');
-const view = {w:W, h:H, dpr:1, s:0, tx:0, ty:0, cx:W/2, cy:H/2};
+const view = {w:W, h:H, dpr:1, s:0, tx:0, ty:0, cx:W/2, cy:H/2, hudH:HUD, zoomed:false};
+let hudSplit = 410;   // x-Position, an der die HUD-Leiste im Hochformat in zwei Zeilen geteilt wird
 // Canvas an den verfügbaren Platz anpassen (Desktop, Tablet, Handy – Hoch- und Querformat)
 function fit(){
-  const full = zoomMQ.matches;
-  document.body.classList.toggle('zoomable', full);
   const cs = getComputedStyle(document.body);
   const vw = window.visualViewport ? visualViewport.width : innerWidth;
   const vh = window.visualViewport ? visualViewport.height : innerHeight;
   const aw = vw - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const ah = vh - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  const sf = Math.max(0.1, Math.min(aw / W, ah / H) * (full ? 1 : 0.98));
-  view.w = Math.floor(full ? aw : W*sf); view.h = Math.floor(full ? ah : H*sf);
+  view.w = Math.max(1, Math.floor(aw)); view.h = Math.max(1, Math.floor(ah));
   view.dpr = window.devicePixelRatio || 1;
   cv.style.width = view.w + 'px'; cv.style.height = view.h + 'px';
   cv.width = Math.round(view.w * view.dpr); cv.height = Math.round(view.h * view.dpr);
@@ -78,36 +74,61 @@ function fit(){
 }
 // Bringt das interne Bild auf den Bildschirm; zoomt sanft und lässt die Kamera der Figur folgen
 function composite(){
-  const zoomed = zoomMQ.matches && state === 'play';
+  const zoomed = state === 'play';
   const sFit = Math.min(view.w / W, view.h / H), sFill = Math.max(view.w / W, view.h / H);
   const target = zoomed ? sFill : sFit;
   view.s += (target - view.s) * 0.08; if(Math.abs(target - view.s) < 0.002) view.s = target;
+  const s = view.s, d = view.dpr;
+  view.zoomed = W*s > view.w + 1 || H*s > view.h + 1;
+  // HUD-Layout: passt die Leiste nicht in die Breite (Hochformat), wird sie auf zwei Zeilen aufgeteilt
+  const oneRow = W*s <= view.w + 1;
+  const hs = oneRow ? s : Math.min(s, view.w / Math.max(hudSplit, W - hudSplit));
+  view.hudH = oneRow ? HUD*s : 2*HUD*hs;
+  // Kamera: Figur in die Mitte des Bereichs unter dem HUD, am Kartenrand anhalten
   view.cx += ((zoomed ? player.x : W/2) - view.cx) * 0.15;
   view.cy += ((zoomed ? HUD + player.y : H/2) - view.cy) * 0.15;
-  const s = view.s, d = view.dpr;
-  const place = (c, frame, screen) => frame*s <= screen ? (screen - frame*s) / 2 : Math.min(0, Math.max(screen - frame*s, screen/2 - c*s));
-  view.tx = place(view.cx, W, view.w); view.ty = place(view.cy, H, view.h);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  view.tx = W*s <= view.w ? (view.w - W*s) / 2 : clamp(view.w/2 - view.cx*s, view.w - W*s, 0);
+  const worldFree = view.h - view.hudH - (H - HUD)*s;   // Platz unter dem HUD, falls die Karte vertikal ganz passt
+  view.ty = !view.zoomed ? (view.h - H*s) / 2
+          : worldFree >= 0 ? view.hudH - HUD*s + worldFree / 2
+          : clamp((view.hudH + view.h)/2 - view.cy*s, view.h - H*s, view.hudH - HUD*s);
   dctx.setTransform(1,0,0,1,0,0);
   dctx.fillStyle = '#0d0b14'; dctx.fillRect(0, 0, cv.width, cv.height);
   dctx.imageSmoothingQuality = 'high';
   dctx.drawImage(buf, 0, 0, buf.width, buf.height, view.tx*d, view.ty*d, W*s*d, H*s*d);
+  if(!view.zoomed) return;
   // HUD bleibt beim Zoomen oben fest stehen
-  if(view.ty < 0) dctx.drawImage(buf, 0, 0, buf.width, HUD*RS, view.tx*d, 0, W*s*d, HUD*s*d);
+  if(oneRow){ dctx.drawImage(buf, 0, 0, buf.width, HUD*RS, view.tx*d, Math.max(0, view.ty)*d, W*s*d, HUD*s*d); return; }
+  const k = sFill > sFit ? clamp((s - sFit) / (sFill - sFit) * 3, 0, 1) : 1;   // sanft einblenden
+  const rh = HUD*hs, rw = (W - hudSplit)*hs;
+  dctx.globalAlpha = k;
+  dctx.setTransform(d, 0, 0, d, 0, 0);
+  dctx.fillStyle = '#1d1729'; dctx.fillRect(0, 0, view.w, 2*rh);
+  dctx.drawImage(buf, 0, 0, hudSplit*RS, HUD*RS, 0, 0, hudSplit*hs, rh);
+  dctx.drawImage(buf, hudSplit*RS, 0, (W - hudSplit)*RS, HUD*RS, view.w - rw, rh, rw, rh);
+  dctx.globalAlpha = 1;
 }
-// UI-Elemente (Hinweise, Toasts) direkt auf den Bildschirm zeichnen, oben bzw. unten verankert
+// UI-Elemente (Hinweise, Boss-Leiste, Toasts) direkt auf den Bildschirm zeichnen – unabhängig von der Kamera
+// unten bzw. direkt unter dem HUD verankert, horizontal zentriert
 function drawOverlayUI(){
   const s = view.s, d = view.dpr;
   ctx = dctx;
-  dctx.setTransform(s*d, 0, 0, s*d, view.tx*d, (Math.min(view.h, view.ty + H*s) - H*s) * d);
-  drawMsg();
-  dctx.setTransform(s*d, 0, 0, s*d, view.tx*d, Math.max(0, view.ty) * d);
-  drawToast();
+  if(view.zoomed){
+    const u = Math.min(s, view.w / 520), ox = view.w/2 - W/2*u;
+    dctx.setTransform(u*d, 0, 0, u*d, ox*d, (view.h - H*u) * d);
+    drawBossBar(); drawMsg();
+    dctx.setTransform(u*d, 0, 0, u*d, ox*d, (view.hudH - HUD*u) * d);
+    drawToast();
+  } else {
+    dctx.setTransform(s*d, 0, 0, s*d, view.tx*d, view.ty*d);
+    drawBossBar(); drawMsg(); drawToast();
+  }
   ctx = gctx;
 }
 addEventListener('resize', fit);
 addEventListener('orientationchange', () => setTimeout(fit, 100));
 if(window.visualViewport) visualViewport.addEventListener('resize', fit);
-zoomMQ.addEventListener('change', fit);
 fit();
 // Kein Scrollen/Zoomen per Geste auf dem Handy
 document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
@@ -1785,6 +1806,7 @@ function drawHUD(){
   g.fillStyle = ready >= 1 ? (P.blocking ? '#fff08a' : '#7fd4ff') : '#4a6a8a'; g.fillRect(sx+1, 26, 78*ready, 5);
   // Turtle
   const mx = Math.max(420, sx + 100);
+  hudSplit = mx - 10;
   g.fillStyle = '#c9f5a8'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillText('Schiggy', mx, 22);
   const tx = mx + Math.ceil(g.measureText('Schiggy').width) + 10; // Herzen beginnen hinter dem Namen
   const ts = turtle.maxhp > 6 ? 15 : 20, tz = turtle.maxhp > 6 ? 14 : 17;
@@ -1800,8 +1822,11 @@ function drawHUD(){
   drawCoin(g, 768, 22, 8);
   g.textAlign = 'left'; g.font = 'bold 15px "Trebuchet MS", sans-serif'; g.fillStyle = '#ffd34d'; g.fillText(run.gold, 781, 23);
   if(muted){ g.fillStyle = '#888'; g.fillText('🔇', 822, 22); }
-  // Boss-Leiste
-  const boss = enemies.find(e => e.kind === 'boss' && e.aggroed);
+  g.textBaseline = 'alphabetic';
+}
+function drawBossBar(){
+  if(state !== 'play') return;
+  const g = ctx, boss = enemies.find(e => e.kind === 'boss' && e.aggroed);
   if(boss){
     const bw = 400, bx = (W-bw)/2, by = H - 26;
     g.fillStyle = 'rgba(0,0,0,.7)'; g.fillRect(bx-4, by-16, bw+8, 30);
