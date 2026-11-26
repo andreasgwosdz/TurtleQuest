@@ -2,7 +2,11 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0b14">
 <title>TurtleQuest</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -13,16 +17,24 @@
   plausible.init()
 </script>
 <style>
-  html,body{margin:0;height:100%;background:#0d0b14;}
-  body{display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  html,body{margin:0;width:100%;height:100%;height:100dvh;background:#0d0b14;overflow:hidden;overscroll-behavior:none;}
+  body{display:flex;align-items:center;justify-content:center;box-sizing:border-box;
+       padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+       -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-text-size-adjust:100%;}
   canvas{display:block;box-shadow:0 0 60px #000;border-radius:6px;}
   /* Touch-Steuerung: nur auf Geräten mit grobem Zeiger (Handy/Tablet) sichtbar */
-  #joyPad{display:none;align-items:center;justify-content:center;padding:0 16px;}
-  #joy{position:relative;width:140px;height:140px;border-radius:50%;border:3px solid rgba(232,224,255,.35);
-       background:rgba(232,224,255,.06);touch-action:none;user-select:none;-webkit-user-select:none;}
-  #knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
-        background:rgba(232,224,255,.55);box-shadow:0 0 12px rgba(0,0,0,.5);pointer-events:none;}
-  @media (pointer: coarse){ #joyPad{display:flex;} }
+  /* Schwebt immer unten links über dem Spielfeld */
+  #joyPad{display:none;position:fixed;z-index:10;
+          left:calc(env(safe-area-inset-left) + 20px);bottom:calc(env(safe-area-inset-bottom) + 20px);}
+  #joy{position:relative;width:130px;height:130px;border-radius:50%;box-sizing:border-box;
+       border:3px solid rgba(232,224,255,.6);background:rgba(13,11,20,.45);
+       -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+       box-shadow:0 4px 18px rgba(0,0,0,.6), inset 0 0 18px rgba(232,224,255,.12);
+       touch-action:none;user-select:none;-webkit-user-select:none;}
+  #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;
+        background:radial-gradient(circle at 35% 35%, #fff, rgba(232,224,255,.85) 45%, rgba(185,174,224,.85));
+        box-shadow:0 3px 10px rgba(0,0,0,.6);pointer-events:none;}
+  @media (pointer: coarse){ #joyPad{display:block;} }
 </style>
 </head>
 <body>
@@ -37,8 +49,24 @@ const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const T = 32, COLS = 30, ROWS = 20, HUD = 44;
 const W = COLS * T, H = ROWS * T + HUD;
 cv.width = W; cv.height = H;
-function fit(){ const padW = document.getElementById('joyPad').offsetWidth; const s = Math.min((innerWidth - padW) / W, innerHeight / H) * 0.98; cv.style.width = W*s + 'px'; cv.style.height = H*s + 'px'; }
-addEventListener('resize', fit); fit();
+// Canvas an den verfügbaren Platz anpassen (Desktop, Tablet, Handy – Hoch- und Querformat)
+function fit(){
+  const cs = getComputedStyle(document.body);
+  const vw = window.visualViewport ? visualViewport.width : innerWidth;
+  const vh = window.visualViewport ? visualViewport.height : innerHeight;
+  let aw = vw - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  let ah = vh - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const s = Math.max(0.1, Math.min(aw / W, ah / H) * 0.98);
+  cv.style.width = Math.floor(W*s) + 'px'; cv.style.height = Math.floor(H*s) + 'px';
+}
+addEventListener('resize', fit);
+addEventListener('orientationchange', () => setTimeout(fit, 100));
+if(window.visualViewport) visualViewport.addEventListener('resize', fit);
+fit();
+// Kein Scrollen/Zoomen per Geste auf dem Handy
+document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
 
 // ---------------------------------------------------------------- Audio
 let actx = null, muted = false;
@@ -102,7 +130,7 @@ const hit  = (...ks) => ks.some(k => pressed[k]);
 const stick = {x:0, y:0, id:null};
 (() => {
   const joy = document.getElementById('joy'), knob = document.getElementById('knob');
-  const set = (x, y) => { stick.x = x; stick.y = y; knob.style.transform = `translate(${x*42}px, ${y*42}px)`; };
+  const set = (x, y) => { stick.x = x; stick.y = y; knob.style.transform = `translate(${x*38}px, ${y*38}px)`; };
   const track = e => {
     const r = joy.getBoundingClientRect(), R = r.width/2;
     let x = (e.clientX - r.left - R) / R, y = (e.clientY - r.top - R) / R;
